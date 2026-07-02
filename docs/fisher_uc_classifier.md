@@ -20,6 +20,9 @@ where `theta_i` is the selected Gaussian parameter group. The commonly used key 
 
 ## Core Files
 
+- `uncertainty/`
+  Read this directory first. It collects the Fisher rank normalization, top-k Gaussian+UC token construction, and present/absent classifier heads in one place.
+
 - `scripts/compute_rgb_param_fisher_uncertainty.py`
   Computes per-Gaussian RGB parameter Fisher energy with Hutchinson probes. It saves `rgb_param_fisher_uncertainty.pt`, including `color_uncertainty_rank01`, `full_raw_uncertainty_rank01`, and related diagnostics.
 

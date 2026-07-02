@@ -16,6 +16,7 @@ if REPO_ROOT not in sys.path:
 from arguments import ModelParams, OptimizationParams, PipelineParams, get_combined_args
 from scene import Scene
 from scene.gaussian_model import GaussianModel
+from uncertainty.fisher import rank01_high
 from utils.general_utils import safe_state
 from utils.sh_utils import eval_sh
 
@@ -155,15 +156,6 @@ def pool_fisher_cuda(view_idx, view, gaussians, pipeline, background, fishers, r
     fishers[:, 5, 3] += grad[:, 17]
     fishers[:, 5, 4] += grad[:, 19]
     fishers[:, 5, 5] += grad[:, 20]
-
-
-def rank01_high(values):
-    if values.numel() <= 1:
-        return torch.full_like(values, 0.5)
-    order = torch.argsort(values)
-    ranks = torch.empty_like(values, dtype=torch.float32)
-    ranks[order] = torch.arange(values.numel(), device=values.device, dtype=torch.float32)
-    return ranks / float(values.numel() - 1)
 
 
 def resolve_checkpoint(model_path, checkpoint_name, checkpoint_path):

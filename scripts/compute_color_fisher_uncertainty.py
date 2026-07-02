@@ -18,17 +18,9 @@ from arguments import ModelParams, PipelineParams, get_combined_args
 from diff_gaussian_rasterization import GaussianRasterizationSettings, GaussianRasterizer
 from scene import Scene
 from scene.gaussian_model import GaussianModel
+from uncertainty.fisher import rank01_high
 from utils.general_utils import safe_state
 from utils.sh_utils import eval_sh
-
-
-def rank01_high(values):
-    if values.numel() <= 1:
-        return torch.full_like(values, 0.5, dtype=torch.float32)
-    order = torch.argsort(values)
-    ranks = torch.empty_like(values, dtype=torch.float32)
-    ranks[order] = torch.arange(values.numel(), device=values.device, dtype=torch.float32)
-    return ranks / float(values.numel() - 1)
 
 
 def build_gaussians(dataset, args):

@@ -7,6 +7,7 @@ import torch
 import math
 from diff_gaussian_rasterization import GaussianRasterizationSettings, GaussianRasterizer
 from scene.gaussian_model import GaussianModel
+from uncertainty.gaussian_tokens import build_gaussian_attr_tokens
 from utils.sh_utils import eval_sh
 
 def min_max_normalize_torch(points):
@@ -39,40 +40,6 @@ def _spearman_1d(a, b):
         return torch.tensor(float("nan"), device=a.device)
     return (ar * br).sum() / denom
 
-
-def _normalize_scene_xyz(xyz):
-    min_vals = xyz.min(dim=0).values
-    max_vals = xyz.max(dim=0).values
-    denom = (max_vals - min_vals).clamp_min(1e-6)
-    return 2.0 * (xyz - min_vals) / denom - 1.0
-
-
-def _build_gaussian_attr_tokens(pc, g, indices):
-    uc = getattr(pc, "external_gaussian_uncertainty", None)
-    if uc is None:
-        raise ValueError(
-            "--use_gaussian_attr_conv_head requires external Gaussian "
-            "uncertainty to be loaded"
-        )
-    uc = uc.to(device=g.device, dtype=g.dtype).reshape(-1)
-    if uc.shape[0] != g.shape[0]:
-        raise ValueError(
-            f"External uncertainty length mismatch in renderer: got {uc.shape[0]}, "
-            f"expected {g.shape[0]}"
-        )
-    idx = indices.to(device=g.device)
-    xyz_norm = _normalize_scene_xyz(pc.get_xyz).to(dtype=g.dtype)
-    sh_flat = pc.get_features.reshape(pc.get_features.shape[0], -1).to(dtype=g.dtype)
-    attr = torch.cat([
-        g[idx],
-        xyz_norm[idx],
-        pc._scaling[idx].to(dtype=g.dtype),
-        pc.get_rotation[idx].to(dtype=g.dtype),
-        pc.get_opacity[idx].to(dtype=g.dtype),
-        sh_flat[idx],
-        uc[idx].unsqueeze(-1),
-    ], dim=-1)
-    return attr, uc[idx]
 
 def render(viewpoint_camera, pc : GaussianModel, pipe, bg_color : torch.Tensor, opt,
            scaling_modifier = 1.0, override_color = None, sentence=None,
@@ -516,7 +483,7 @@ def render(viewpoint_camera, pc : GaussianModel, pipe, bg_color : torch.Tensor, 
         if use_gaussian_attr_conv_head:
             if getattr(pc, "gaussian_attr_conv_head", None) is None:
                 raise ValueError("--use_gaussian_attr_conv_head requires gaussian_attr_conv_head")
-            attr_topk, uc_topk = _build_gaussian_attr_tokens(pc, g, evidence_indices)
+            attr_topk, uc_topk = build_gaussian_attr_tokens(pc, g, evidence_indices)
             ph_input, attr_stats = pc.gaussian_attr_conv_head(
                 attr_topk, return_stats=True
             )

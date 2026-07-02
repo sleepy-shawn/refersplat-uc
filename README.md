@@ -76,7 +76,7 @@ Training runs for `--total_iters` iterations (default `45000`, matching the pape
 
 ## Fisher UC + Classifier Head
 
-This fork includes the Fisher uncertainty plus present/absent classifier code used for no-target Ref-LERF experiments. See `docs/fisher_uc_classifier.md`.
+This fork includes the Fisher uncertainty plus present/absent classifier code used for no-target Ref-LERF experiments. For a compact reading entry point, start with `uncertainty/README.md`; for the full experiment notes, see `docs/fisher_uc_classifier.md`.
 
 The shortest entry point is:
 

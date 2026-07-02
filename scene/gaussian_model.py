@@ -16,9 +16,11 @@ import torch.nn.functional as F
 from transformers import BertTokenizer, BertModel
 import math
 from .cross_attention import (
-    MLP1, MLP2, MLP3, CrossAttention, PresentHead, SigmaHead,
-    ReferUncertaintyHead, GaussianAttrConvPoolFormerHead,
+    MLP1, MLP2, MLP3, CrossAttention, SigmaHead, ReferUncertaintyHead,
 )
+from uncertainty.fisher import load_uncertainty_tensor
+from uncertainty.gaussian_tokens import gaussian_attr_dim
+from uncertainty.present_classifier import GaussianAttrConvPoolFormerHead, PresentHead
 
                        
 class GaussianModel:
@@ -163,8 +165,7 @@ class GaussianModel:
 
         self.gaussian_attr_conv_head = None
         if self.use_gaussian_attr_conv_head:
-            color_dim = 3 * (self.max_sh_degree + 1) ** 2
-            attr_dim = 128 + 3 + 3 + 4 + 1 + color_dim + 1
+            attr_dim = gaussian_attr_dim(self.max_sh_degree)
             self.gaussian_attr_conv_head = GaussianAttrConvPoolFormerHead(
                 attr_dim=attr_dim,
                 D=128,
@@ -507,40 +508,7 @@ class GaussianModel:
                 "--use_gaussian_attr_conv_head requires "
                 "--external_gaussian_uncertainty_path"
             )
-        data = torch.load(path, map_location="cpu", weights_only=False)
-        if isinstance(data, dict):
-            if key:
-                if key not in data:
-                    keys = ", ".join(sorted(str(k) for k in data.keys())[:20])
-                    raise KeyError(
-                        f"Uncertainty key {key!r} not found in {path}. "
-                        f"Available keys include: {keys}"
-                    )
-                values = data[key]
-            else:
-                candidate_keys = [
-                    "uncertainty",
-                    "gaussian_uncertainty",
-                    "pup_uncertainty_rank01",
-                    "color_uncertainty_rank01",
-                ]
-                values = None
-                for candidate in candidate_keys:
-                    if candidate in data:
-                        values = data[candidate]
-                        key = candidate
-                        break
-                if values is None:
-                    keys = ", ".join(sorted(str(k) for k in data.keys())[:20])
-                    raise KeyError(
-                        "No uncertainty key was provided and no default key "
-                        f"was found in {path}. Available keys include: {keys}"
-                    )
-        else:
-            values = data
-            key = key or "<tensor>"
-
-        values = torch.as_tensor(values, dtype=torch.float32).reshape(-1)
+        values, key = load_uncertainty_tensor(path, key)
         if self._xyz.numel() > 0 and values.shape[0] != self._xyz.shape[0]:
             raise ValueError(
                 f"External uncertainty length mismatch: got {values.shape[0]}, "

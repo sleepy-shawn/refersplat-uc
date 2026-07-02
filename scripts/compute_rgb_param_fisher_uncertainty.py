@@ -17,6 +17,8 @@ from arguments import ModelParams, OptimizationParams, PipelineParams, get_combi
 from diff_gaussian_rasterization import GaussianRasterizationSettings, GaussianRasterizer
 from scene import Scene
 from scene.gaussian_model import GaussianModel
+from uncertainty.fisher import rank01_high
+from uncertainty.fisher import uncertainty_from_fisher_energy as uncertainty_from_energy
 from utils.general_utils import safe_state
 from utils.sh_utils import eval_sh
 
@@ -48,15 +50,6 @@ def build_gaussians(dataset, opt):
         variational_language_log_sigma_min=getattr(opt, "variational_language_log_sigma_min", -5.0),
         variational_language_log_sigma_max=getattr(opt, "variational_language_log_sigma_max", 2.0),
     )
-
-
-def rank01_high(values):
-    if values.numel() <= 1:
-        return torch.full_like(values, 0.5, dtype=torch.float32)
-    order = torch.argsort(values)
-    ranks = torch.empty_like(values, dtype=torch.float32)
-    ranks[order] = torch.arange(values.numel(), device=values.device, dtype=torch.float32)
-    return ranks / float(values.numel() - 1)
 
 
 def rgb_render(viewpoint_camera, pc, pipe, bg_color, scaling_modifier=1.0):
@@ -161,12 +154,6 @@ def set_requires_grad(pc):
     for module in [pc.mlp1, pc.mlp2, pc.mlp3, pc.cross_attention]:
         for param in module.parameters():
             param.requires_grad_(False)
-
-
-def uncertainty_from_energy(energy, eps):
-    log_energy = torch.log(energy.clamp_min(float(eps)))
-    uncertainty = -log_energy
-    return log_energy, uncertainty, rank01_high(uncertainty)
 
 
 def main():
