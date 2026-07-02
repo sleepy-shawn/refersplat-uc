@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+*.pyo
+.claude/
+.codex/
+.DS_Store
+*.egg-info/
+.ipynb_checkpoints/
+output/
+logs/
+gaussian-splatting-pup/
+variational-3dgs/
+*.pt
+*.pth
+*.ckpt
+events.out.tfevents.*
